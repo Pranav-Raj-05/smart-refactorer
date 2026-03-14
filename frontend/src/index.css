@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+@layer base {
+  :root {
+    /* Core palette: #0f172a bg, #1e293b panels, #38bdf8 accent */
+    --background: 222 47% 11%;
+    --foreground: 213 31% 91%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 199 89% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 22%;
+    --secondary-foreground: 213 31% 85%;
+
+    --muted: 217 33% 20%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 199 89% 60%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 222 47% 11%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    --processing: 199 89% 60%;
+    --processing-foreground: 222 47% 11%;
+
+    --border: 217 25% 24%;
+    --input: 217 25% 24%;
+    --ring: 199 89% 60%;
+
+    --radius: 0.5rem;
+
+    --terminal-bg: 222 50% 8%;
+    --terminal: 142 71% 65%;
+
+    --diff-added-bg: 142 71% 45%;
+    --diff-added-text: 142 71% 85%;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 213 31% 85%;
+    --sidebar-primary: 199 89% 60%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 22%;
+    --sidebar-accent-foreground: 213 31% 85%;
+    --sidebar-border: 217 25% 24%;
+    --sidebar-ring: 199 89% 60%;
+
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* Terminal blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.terminal-cursor {
+  animation: blink 1s step-end infinite;
+}
+
+/* Coverage bar animation */
+@keyframes fill-bar {
+  from { width: 0%; }
+}
+.animate-fill {
+  animation: fill-bar 1s ease-out forwards;
+}
+
+/* Diff line highlight */
+.diff-added {
+  background: hsl(var(--diff-added-bg) / 0.12);
+  border-left: 3px solid hsl(var(--success));
+}
