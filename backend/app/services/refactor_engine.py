@@ -1,152 +1,101 @@
 import ast
 import subprocess
-import tempfile
 import sys
+import tempfile
 
 
-def infer_return_type(node):
+def generate_docstring(func):
+    args = [arg.arg for arg in func.args.args]
 
-    for child in ast.walk(node):
-
-        if isinstance(child, ast.Return):
-
-            if isinstance(child.value, ast.BinOp):
-                return "number"
-
-            if isinstance(child.value, ast.Str):
-                return "string"
-
-            if isinstance(child.value, ast.List):
-                return "list"
-
-    return "Any"
-
-
-def generate_docstring(func_node):
-
-    args = [arg.arg for arg in func_node.args.args]
-
-    args_section = ""
+    doc = f"{func.name} function.\n\n"
 
     if args:
-        args_section = "Args:\n"
-        for arg in args:
-            args_section += f"        {arg}: Parameter `{arg}` of the function.\n"
+        doc += "Args:\n"
+        for a in args:
+            doc += f"    {a}: Parameter `{a}` of the function.\n"
 
-    return_type = infer_return_type(func_node)
+    doc += "\nReturns:\n    value"
 
-    docstring = f"""
-{func_node.name} function.
-
-{args_section}
-Returns:
-        {return_type}: Result of the computation.
-"""
-
-    return docstring.strip()
+    return doc
 
 
-def analyze_quality(node):
+class DocstringAdder(ast.NodeTransformer):
 
-    warnings = []
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
 
-    if len(node.args.args) > 4:
-        warnings.append("Too many arguments")
+        if ast.get_docstring(node) is None:
+            docstring = generate_docstring(node)
+            doc_node = ast.Expr(value=ast.Constant(value=docstring))
+            node.body.insert(0, doc_node)
 
-    if len(node.body) > 20:
-        warnings.append("Function too long")
-
-    return warnings
+        return node
 
 
-def process_code(code):
+def process_code(code: str):
 
     logs = []
+    logs.append("[INFO] Starting refactor pipeline...")
 
-    logs.append({"type": "info", "message": "Starting refactor pipeline..."})
-
-    tree = ast.parse(code)
-
-    logs.append({"type": "info", "message": "AST parsing complete"})
+    try:
+        tree = ast.parse(code)
+        logs.append("[INFO] AST parsing complete")
+    except Exception as e:
+        logs.append(f"[ERROR] Parsing failed: {str(e)}")
+        return {
+            "refactored_code": code,
+            "functions": [],
+            "functions_detected": 0,
+            "docstrings_added": 0,
+            "execution_result": {"success": False},
+            "logs": logs
+        }
 
     functions = []
     docstrings_added = 0
-    warnings = []
-
-    lines = code.split("\n")
-
-    insertions = []
 
     for node in ast.walk(tree):
-
         if isinstance(node, ast.FunctionDef):
-
-            existing_doc = ast.get_docstring(node)
+            has_doc = ast.get_docstring(node) is not None
 
             functions.append({
                 "name": node.name,
                 "line": node.lineno,
-                "has_docstring": existing_doc is not None
+                "has_docstring": has_doc
             })
 
-            quality = analyze_quality(node)
-
-            for w in quality:
-                warnings.append(f"{node.name}: {w}")
-
-            indent = " " * (node.col_offset + 4)
-
-            if existing_doc is None:
-
-                doc = generate_docstring(node)
-
-                block = [
-                    indent + '"""',
-                    *(indent + line for line in doc.split("\n")),
-                    indent + '"""'
-                ]
-
-                insertions.append((node.lineno, "\n".join(block)))
-
+            if not has_doc:
                 docstrings_added += 1
 
-    for lineno, block in sorted(insertions, reverse=True):
-        lines.insert(lineno, block)
+    transformer = DocstringAdder()
+    new_tree = transformer.visit(tree)
+    ast.fix_missing_locations(new_tree)
 
-    refactored_code = "\n".join(lines)
+    refactored_code = ast.unparse(new_tree)
 
-    logs.append({"type": "info", "message": f"{len(functions)} functions detected"})
-    logs.append({"type": "success", "message": f"{docstrings_added} docstrings generated"})
+    logs.append(f"[OK] {docstrings_added} docstrings generated")
 
-    for w in warnings:
-        logs.append({"type": "warning", "message": w})
-
-    execution_result = {"success": True}
+    validation = {"success": True}
 
     try:
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode="w") as tmp:
-            tmp.write(refactored_code)
-            temp_file = tmp.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py") as tmp:
+            tmp.write(refactored_code.encode())
+            tmp_path = tmp.name
 
         subprocess.check_output(
-            [sys.executable, "-m", "py_compile", temp_file],
-            stderr=subprocess.STDOUT
+            [sys.executable, "-m", "py_compile", tmp_path],
+            stderr=subprocess.STDOUT,
+            timeout=3
         )
 
-        logs.append({"type": "success", "message": "Syntax validation passed"})
-
-    except subprocess.CalledProcessError:
-
-        execution_result = {"success": False}
-
-        logs.append({"type": "error", "message": "Syntax validation failed"})
+    except Exception:
+        validation = {"success": False}
 
     return {
         "refactored_code": refactored_code,
         "functions": functions,
         "functions_detected": len(functions),
         "docstrings_added": docstrings_added,
-        "execution_result": execution_result,
+        "execution_result": validation,
         "logs": logs
     }

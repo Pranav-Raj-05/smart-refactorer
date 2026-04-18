@@ -4,16 +4,15 @@ from app.services.refactor_engine import process_code
 
 router = APIRouter()
 
-
 @router.post("/analyze")
-async def analyze_files(files: List[UploadFile] = File(...)):
+async def analyze(files: List[UploadFile] = File(...)):
 
     results = []
 
     for file in files:
+        code = (await file.read()).decode()
 
-        code = await file.read()
-        code = code.decode()
+        print("Processing:", file.filename)
 
         result = process_code(code)
 

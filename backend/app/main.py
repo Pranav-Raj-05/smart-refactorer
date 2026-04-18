@@ -4,7 +4,7 @@ from app.api.routes import router
 
 app = FastAPI(title="Smart Python Refactorer API")
 
-# CORS (allows frontend to call backend)
+# ✅ CORS (VERY IMPORTANT for frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
